@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Liran Amar — Portfolio</title>
+  <meta name="description" content="Liran Amar — designer. Industrial design (Politecnico di Milano), graphic design &amp; still photography (F.I.T, New York).">
+  <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Libre+Caslon+Display&family=Neonderthaw&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <!-- home -->
+    <section class="frame home" id="home" aria-label="Home">
+      <img class="layer cover" src="assets/img/hero-bg.jpg" alt="">
+      <div class="stripe"></div>
+      <div class="bust" aria-hidden="true">
+        <img src="assets/img/hero-bust.png" alt="">
+      </div>
+      <a class="logo" href="#hello" aria-label="Scroll to introduction">
+        <img src="assets/img/logo.svg" width="133" height="125" alt="">
+      </a>
+    </section>
+
+    <!-- hello -->
+    <section class="frame hello" id="hello" aria-label="Introduction">
+      <h1 class="visually-hidden">Hello, my name is Liran</h1>
+      <p class="hello__hello" aria-hidden="true">Hello</p>
+      <p class="hello__intro" aria-hidden="true">my name is</p>
+      <p class="hello__name" aria-hidden="true">LIRAN</p>
+      <div class="stripe"></div>
+    </section>
+
+    <!-- timeline + place collages are rendered from data in script.js -->
+    <div id="story"></div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
