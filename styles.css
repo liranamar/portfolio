@@ -308,22 +308,41 @@ img.piece, .piece > img { object-fit: cover; }
               scale 2s cubic-bezier(.2, .75, .3, 1) var(--d, 0s);
 }
 
-/* --- New York: Manhattan falls in building by building, each landing with a small bounce */
-.js .collage .fx-fall {
-  opacity: 1; transform: none; translate: 0 calc(-1250 * var(--u)); transition: none;
-  will-change: translate; /* each slice gets its own layer up front, so the drop doesn't stall the page */
+/* --- New York: Manhattan explodes into the frame. Shards start bunched at the blast
+   point (--bx/--by), shrunk and spun, burst out past their spot (--ox/--oy) and settle. */
+.js .collage .fx-burst {
+  opacity: 0; transform: none; transition: opacity 0.2s ease;
+  will-change: translate, rotate, scale;
 }
-.js .collage.is-built .fx-fall {
-  translate: 0 0;
-  animation: fall 0.95s var(--d, 0s) both;
+.js .collage.is-built .fx-burst {
+  opacity: 1;
+  transition: none;
+  animation: burst 1.1s var(--d, 0s) both;
 }
-@keyframes fall {
-  0%   { translate: 0 calc(-1250 * var(--u)); animation-timing-function: cubic-bezier(.5, 0, .9, .5); }
-  62%  { translate: 0 0; animation-timing-function: ease-out; }
-  76%  { translate: 0 calc(-34 * var(--u)); animation-timing-function: ease-in; }
-  88%  { translate: 0 0; animation-timing-function: ease-out; }
-  94%  { translate: 0 calc(-8 * var(--u)); animation-timing-function: ease-in; }
-  100% { translate: 0 0; }
+@keyframes burst {
+  0%   { opacity: 0; translate: var(--bx) var(--by); rotate: var(--spin); scale: 0.15;
+         animation-timing-function: cubic-bezier(.1, .7, .25, 1); }
+  8%   { opacity: 1; }
+  62%  { translate: var(--ox) var(--oy); rotate: calc(var(--spin) * -0.04); scale: 1.04;
+         animation-timing-function: ease-in-out; }
+  100% { opacity: 1; translate: 0 0; rotate: 0deg; scale: 1; }
+}
+/* the blast itself: a quick burst of light at the origin */
+.burst-flash {
+  position: absolute;
+  width: calc(1400 * var(--u)); height: calc(1400 * var(--u));
+  margin: calc(-700 * var(--u)) 0 0 calc(-700 * var(--u));
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #fff 0%, rgba(255, 252, 230, 0.85) 25%, rgba(255, 240, 180, 0) 100%);
+  pointer-events: none;
+  opacity: 0;
+}
+.js .collage .burst-flash { opacity: 0; transform: none; transition: none; }
+.js .collage.is-built .burst-flash { opacity: 0; transition: none; animation: blast 0.9s ease-out both; }
+@keyframes blast {
+  0%   { opacity: 0; scale: 0.05; }
+  12%  { opacity: 1; }
+  100% { opacity: 0; scale: 1.3; }
 }
 
 /* --- back home: Barbie the dog pants (tongue pivots where it leaves the mouth) */
@@ -358,6 +377,7 @@ img.piece, .piece > img { object-fit: cover; }
   /* doubled classes outrank the .is-built rules above */
   .js .collage.collage .reveal.reveal { opacity: 1; transform: none; translate: none; scale: none; transition: none; animation: none; }
   .collage.collage .fx-pant { animation: none; }
+  .collage.collage .burst-flash.burst-flash { display: none; }
 }
 
 /* ------------------------------------------------------------------

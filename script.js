@@ -5,11 +5,11 @@
    Collage pieces: { file, box: [left, top, width, height] in Figma px, ... }
      rotate: degrees
      fx:     entrance effect instead of the default pop-in (see styles.css):
-             "runway" | "fly" | "fall" | "slap"
+             "runway" | "fly" | "burst" | "slap"
      delay:  ms before the entrance starts
      parts:  small moving images inside the piece, at: [left, top, width, height] in % of it
-     slices: for fx "fall" — x positions (Figma px) where the image is cut into
-             vertical pieces that drop in one by one
+     grid:   for fx "burst" — [columns, rows] of shards the image is cut into; they
+             explode out from `origin` (Figma px) into place
    "under" pieces show straight away; "over" pieces build on the next scroll step.
 ------------------------------------------------------------------- */
 const IMG = "assets/img/";
@@ -72,16 +72,17 @@ const chapters = [
     collage: {
       label: "New York",
       // rainbow glow GIF behind everything; portrait, turned on its side as in Figma
-      // (stretched a few px wider than Figma so it reaches the right edge)
-      under: [{ file: "ny-rainbow.gif", box: [423.5, -523.5, 1073, 1920], rotate: -90 }],
+      // (stretched to every edge — further than in Figma — so no gap shows while Manhattan explodes in)
+      under: [{ file: "ny-rainbow.gif", box: [370, -470, 1180, 1920], rotate: -90 }],
       // Manhattan + Brooklyn Bridge (transparent sky, so the lime stripe shows above the towers);
-      // it drops in building by building (cuts follow the gaps between towers)
+      // it explodes into the frame: cut into a grid of shards that burst out from one point
       over: [
         {
           file: "ny-manhattan.png",
           box: [0, -100, 1920, 1280],
-          fx: "fall",
-          slices: [0, 168, 272, 365, 472, 640, 760, 832, 1024, 1168, 1344, 1464, 1648, 1744, 1920],
+          fx: "burst",
+          grid: [12, 8], // columns, rows
+          origin: [960, 560], // blast point, Figma px
         },
       ],
     },
@@ -156,8 +157,6 @@ const boxStyle = ([x, y, w, h]) => `left:${u(x)};top:${u(y)};width:${u(w)};heigh
 
 // the runway's vanishing point (Figma px, off-frame left): models scale out from here
 const RUNWAY_VP = [-422.4, 594];
-// drop order for the falling Manhattan slices — deliberately not left to right
-const FALL_ORDER = [5, 1, 9, 12, 3, 7, 0, 13, 10, 2, 8, 4, 11, 6];
 
 function timelineFrame(active) {
   const years = chapters
@@ -196,16 +195,30 @@ function piece(p, i) {
   const builds = i !== undefined;
   const [x, y, w, h] = p.box;
 
-  if (p.slices) {
-    return p.slices
-      .slice(0, -1)
-      .map((left, k) => {
-        // +2px overlap hides hairline seams between slices
-        const width = p.slices[k + 1] - left + (k < p.slices.length - 2 ? 2 : 0);
-        const order = FALL_ORDER.indexOf(k) >= 0 ? FALL_ORDER.indexOf(k) : k;
-        return `<div class="piece slice reveal fx-${p.fx}" style="${boxStyle([x + left, y, width, h])}--d:${order * 110 + (k % 3) * 40}ms;background-image:url(${IMG}${p.file});background-size:${u(w)} ${u(h)};background-position:${u(-left)} 0" aria-hidden="true"></div>`;
-      })
-      .join("");
+  if (p.grid) {
+    // shards start bunched up at the blast point, spun and shrunk, then fly out to their place
+    const [cols, rows] = p.grid;
+    const [ox, oy] = p.origin;
+    const tw = w / cols;
+    const th = h / rows;
+    const shards = [];
+    for (let r = 0; r < rows; r++) {
+      for (let k = 0; k < cols; k++) {
+        const left = k * tw;
+        const top = r * th;
+        const dx = ox - (x + left + tw / 2);
+        const dy = oy - (y + top + th / 2);
+        const dist = Math.hypot(dx, dy);
+        const spin = Math.round((Math.random() * 2 - 1) * 200);
+        const delay = Math.round(dist * 0.12 + Math.random() * 90);
+        // +1px overlap hides hairline seams between shards
+        shards.push(
+          `<div class="piece slice reveal fx-${p.fx}" style="${boxStyle([x + left, y + top, tw + 1, th + 1])}--d:${delay}ms;--bx:${u(dx * 0.92)};--by:${u(dy * 0.92)};--ox:${u(-dx * 0.05)};--oy:${u(-dy * 0.05)};--spin:${spin}deg;background-image:url(${IMG}${p.file});background-size:${u(w)} ${u(h)};background-position:${u(-left)} ${u(-top)}" aria-hidden="true"></div>`
+        );
+      }
+    }
+    const flash = `<div class="burst-flash reveal" style="left:${u(ox)};top:${u(oy)}" aria-hidden="true"></div>`;
+    return shards.join("") + flash;
   }
 
   const cls = ["piece", builds && "reveal", p.fx && `fx-${p.fx}`].filter(Boolean).join(" ");
