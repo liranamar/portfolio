@@ -71,15 +71,17 @@ const chapters = [
     ],
     collage: {
       label: "New York",
-      stripeOnTop: true, // as in Figma, the lime stripe runs over the photo
-      under: [{ file: "ny-love.jpg", box: [160, 13, 1600, 1067], alt: "I love NY" }],
-      // Manhattan drops in building by building (cuts follow the gaps between towers)
+      // rainbow glow GIF behind everything; portrait, turned on its side as in Figma
+      // (stretched a few px wider than Figma so it reaches the right edge)
+      under: [{ file: "ny-rainbow.gif", box: [423.5, -523.5, 1073, 1920], rotate: -90 }],
+      // Manhattan + Brooklyn Bridge (transparent sky, so the lime stripe shows above the towers);
+      // it drops in building by building (cuts follow the gaps between towers)
       over: [
         {
-          file: "ny-skyline.jpg",
-          box: FULL,
+          file: "ny-manhattan.png",
+          box: [0, -100, 1920, 1280],
           fx: "fall",
-          slices: [0, 175, 345, 470, 640, 760, 880, 1030, 1165, 1345, 1460, 1515, 1650, 1800, 1920],
+          slices: [0, 168, 272, 365, 472, 640, 760, 832, 1024, 1168, 1344, 1464, 1648, 1744, 1920],
         },
       ],
     },
@@ -111,27 +113,33 @@ const chapters = [
     bullets: ["that’s me"],
     collage: {
       label: "sparkles",
-      under: [],
-      // stuck on one after another like stickers (bottom to top, as layered in Figma)
+      // "משה 8" peeks out from under the lime stripe, so it sits below it from the start
+      under: [{ file: "moshe-sticker.png", box: [993.82, 21.85, 211.997, 129.042], rotate: -170.96 }],
+      // stuck on one after another like stickers: the logos first, then the "משה" pastries
+      // rain on at the spots and angles set in Figma
       over: [
         { file: "sparkles-logo.jpg", box: [142.17, 217.91, 570.925, 218.968], rotate: -16.11, fx: "slap", alt: "sparkles — branding · uxui · solutions" },
         { file: "hit-logo.png", box: [1537.03, 812.74, 235.666, 155.454], rotate: 11.39, fx: "slap", alt: "HIT — Holon Institute of Technology" },
         { file: "logo-hash.png", box: [1448, 568, 202, 202], fx: "slap", alt: "חש" },
         { file: "logo-studio6b.png", box: [1361.97, 700.97, 216.007, 216.007], rotate: -21.41, fx: "slap", alt: "Studio 6B" },
         { file: "logo-college.png", box: [1610, 626, 230, 230], fx: "slap", alt: "המכללה למינהל" },
+        ...[
+          [449, 553, 191, 116, 0],
+          [196.0, 874.0, 191, 116, 81.07],
+          [41.18, 606.9, 191, 116, 128.26],
+          [1106.23, 888.57, 132.406, 80.595, 128.26],
+          [1828.43, 287.64, 132.406, 80.595, 34.34],
+          [245.85, 44.5, 132.406, 80.595, 16.89],
+          [1321.1, 171.02, 211.997, 129.042, -67.37],
+          [1734.54, -37.15, 142.6, 86.8, 16.89],
+        ].map(([x, y, w, h, rotate], k) => ({
+          file: "moshe-sticker.png",
+          box: [x, y, w, h],
+          rotate,
+          fx: "slap",
+          delay: 2150 + k * 170, // right after the logos
+        })),
       ],
-      // a handful of small "משה" stickers, placed at random on every visit, never on the logos
-      scatter: {
-        file: "moshe.png",
-        ratio: 199 / 196, // height / width of the image
-        count: 7,
-        width: [85, 140], // Figma px
-        avoid: [
-          [90, 110, 680, 440], // sparkles logo
-          [810, 0, 300, 1080], // lime stripe
-          [1290, 540, 600, 500], // logo pile
-        ],
-      },
     },
   },
 ];
@@ -220,27 +228,8 @@ function piece(p, i) {
   return `<div class="${cls}" style="${style}">${img(p.file, p.alt)}${parts}</div>`;
 }
 
-// Random, non-overlapping spots for scattered stickers (Figma px), clear of `avoid` boxes.
-function scatterPieces({ file, ratio, count, width: [wMin, wMax], avoid }, startMs) {
-  const hits = (a, b, pad = 20) =>
-    a[0] < b[0] + b[2] + pad && b[0] < a[0] + a[2] + pad && a[1] < b[1] + b[3] + pad && b[1] < a[1] + a[3] + pad;
-  const placed = [];
-  for (let tries = 0; placed.length < count && tries < 600; tries++) {
-    const w = wMin + Math.random() * (wMax - wMin);
-    const h = w * ratio;
-    const box = [40 + Math.random() * (1920 - 80 - w), 40 + Math.random() * (1080 - 80 - h), w, h];
-    if (avoid.some((r) => hits(box, r)) || placed.some((p) => hits(box, p.box))) continue;
-    // quicker rhythm than the logos: they rain on right after them
-    placed.push({ file, box, rotate: Math.round(Math.random() * 70 - 35), fx: "slap", delay: startMs + placed.length * 170, alt: "" });
-  }
-  return placed;
-}
-
 function collageFrame(c) {
-  const { label, video, under, stripeOnTop, scatter } = c.collage;
-  const over = scatter
-    ? [...c.collage.over, ...scatterPieces(scatter, 250 + c.collage.over.length * 380)]
-    : c.collage.over;
+  const { label, video, under, over, stripeOnTop } = c.collage;
   const stripe = `<div class="stripe"></div>`;
   const vid = video
     ? `<video class="collage__video" style="${boxStyle(video.box)}" src="${video.src}" muted loop playsinline preload="none" aria-hidden="true"></video>`
