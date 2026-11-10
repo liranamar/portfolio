@@ -106,8 +106,7 @@ const chapters = [
     bullets: ["that’s me"],
     collage: {
       label: "sparkles",
-      // "משה 8" peeks out from under the lime stripe, so it sits below it from the start
-      under: [{ file: "moshe-sticker.png", box: [993.82, 21.85, 211.997, 129.042], rotate: -170.96 }],
+      under: [],
       // stuck on one after another like stickers: the logos first, then the "משה" pastries
       // rain on at the spots and angles set in Figma
       over: [
@@ -117,6 +116,7 @@ const chapters = [
         { file: "logo-studio6b.png", box: [1361.97, 700.97, 216.007, 216.007], rotate: -21.41, fx: "slap", alt: "Studio 6B" },
         { file: "logo-college.png", box: [1610, 626, 230, 230], fx: "slap", alt: "המכללה למינהל" },
         ...[
+          [993.82, 21.85, 211.997, 129.042, -170.96, "below"], // "משה 8" peeks out from under the lime stripe
           [449, 553, 191, 116, 0],
           [196.0, 874.0, 191, 116, 81.07],
           [41.18, 606.9, 191, 116, 128.26],
@@ -125,10 +125,11 @@ const chapters = [
           [245.85, 44.5, 132.406, 80.595, 16.89],
           [1321.1, 171.02, 211.997, 129.042, -67.37],
           [1734.54, -37.15, 142.6, 86.8, 16.89],
-        ].map(([x, y, w, h, rotate], k) => ({
+        ].map(([x, y, w, h, rotate, below], k) => ({
           file: "moshe-sticker.png",
           box: [x, y, w, h],
           rotate,
+          belowStripe: !!below,
           fx: "slap",
           delay: 2150 + k * 170, // right after the logos
         })),
@@ -218,13 +219,17 @@ function collageFrame(c) {
   const vid = video
     ? `<video class="collage__video" style="${boxStyle(video.box)}" src="${video.src}" muted loop playsinline preload="none" aria-hidden="true"></video>`
     : "";
+  // pieces that build with the rest but tuck under the stripe (`belowStripe`)
+  const built = (below) =>
+    over.map((p, i) => (!!p.belowStripe === below ? piece(p, i) : "")).join("");
 
   return `
     <section class="frame collage" id="${idFor(c)}-collage" aria-label="${esc(label)}">
       ${under.map((p) => piece(p)).join("")}
       ${vid}
+      ${built(true)}
       ${stripeOnTop ? "" : stripe}
-      ${over.map((p, i) => piece(p, i)).join("")}
+      ${built(false)}
       ${stripeOnTop ? stripe : ""}
     </section>${
       // the extra scroll step only exists when there is something to build
