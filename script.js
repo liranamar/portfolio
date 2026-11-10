@@ -5,11 +5,11 @@
    Collage pieces: { file, box: [left, top, width, height] in Figma px, ... }
      rotate: degrees
      fx:     entrance effect instead of the default pop-in (see styles.css):
-             "runway" | "fly" | "burst" | "slap"
+             "runway" | "fly" | "pixels" | "slap"
      delay:  ms before the entrance starts
      parts:  small moving images inside the piece, at: [left, top, width, height] in % of it
-     grid:   for fx "burst" — [columns, rows] of shards the image is cut into; they
-             explode out from `origin` (Figma px) into place
+     cell:   for fx "pixels" — size (Figma px) of the square pixels the image is broken
+             into; they fly together into the whole picture as you scroll
    "under" pieces show straight away; "over" pieces build on the next scroll step.
 ------------------------------------------------------------------- */
 const IMG = "assets/img/";
@@ -72,19 +72,11 @@ const chapters = [
     collage: {
       label: "New York",
       // rainbow glow GIF behind everything; portrait, turned on its side as in Figma
-      // (stretched to every edge — further than in Figma — so no gap shows while Manhattan explodes in)
+      // (stretched to every edge — further than in Figma — so no gap shows while Manhattan assembles)
       under: [{ file: "ny-rainbow.gif", box: [370, -470, 1180, 1920], rotate: -90 }],
       // Manhattan + Brooklyn Bridge (transparent sky, so the lime stripe shows above the towers);
-      // it explodes into the frame: cut into a grid of shards that burst out from one point
-      over: [
-        {
-          file: "ny-manhattan.png",
-          box: [0, -100, 1920, 1280],
-          fx: "burst",
-          grid: [12, 8], // columns, rows
-          origin: [960, 560], // blast point, Figma px
-        },
-      ],
+      // a pixel collage: scattered square pixels gather into the whole picture, driven by the scroll
+      over: [{ file: "ny-manhattan.png", box: [0, -100, 1920, 1280], fx: "pixels", cell: 40 }],
     },
   },
   {
@@ -195,30 +187,9 @@ function piece(p, i) {
   const builds = i !== undefined;
   const [x, y, w, h] = p.box;
 
-  if (p.grid) {
-    // shards start bunched up at the blast point, spun and shrunk, then fly out to their place
-    const [cols, rows] = p.grid;
-    const [ox, oy] = p.origin;
-    const tw = w / cols;
-    const th = h / rows;
-    const shards = [];
-    for (let r = 0; r < rows; r++) {
-      for (let k = 0; k < cols; k++) {
-        const left = k * tw;
-        const top = r * th;
-        const dx = ox - (x + left + tw / 2);
-        const dy = oy - (y + top + th / 2);
-        const dist = Math.hypot(dx, dy);
-        const spin = Math.round((Math.random() * 2 - 1) * 200);
-        const delay = Math.round(dist * 0.12 + Math.random() * 90);
-        // +1px overlap hides hairline seams between shards
-        shards.push(
-          `<div class="piece slice reveal fx-${p.fx}" style="${boxStyle([x + left, y + top, tw + 1, th + 1])}--d:${delay}ms;--bx:${u(dx * 0.92)};--by:${u(dy * 0.92)};--ox:${u(-dx * 0.05)};--oy:${u(-dy * 0.05)};--spin:${spin}deg;background-image:url(${IMG}${p.file});background-size:${u(w)} ${u(h)};background-position:${u(-left)} ${u(-top)}" aria-hidden="true"></div>`
-        );
-      }
-    }
-    const flash = `<div class="burst-flash reveal" style="left:${u(ox)};top:${u(oy)}" aria-hidden="true"></div>`;
-    return shards.join("") + flash;
+  if (p.fx === "pixels") {
+    // drawn on a canvas by the scroll (see "Pixel collage" below)
+    return `<canvas class="piece pixel-collage" style="${boxStyle(p.box)}" data-src="${IMG}${p.file}" data-box="${p.box.join(",")}" data-cell="${p.cell}" aria-hidden="true"></canvas>`;
   }
 
   const cls = ["piece", builds && "reveal", p.fx && `fx-${p.fx}`].filter(Boolean).join(" ");
@@ -504,3 +475,126 @@ if ("IntersectionObserver" in window) {
 } else {
   document.querySelectorAll(".collage").forEach((el) => el.classList.add("is-built"));
 }
+
+/* ------------------------------------------------------------------
+   Pixel collage (New York): the image is broken into square pixels that
+   start scattered around the frame and gather into the whole picture.
+   Progress follows the scroll: on desktop, the collage's build step
+   (0 when the frame has just arrived, 1 one step later); on phones,
+   the frame's way up the screen. Scroll back and it falls apart again.
+------------------------------------------------------------------- */
+document.querySelectorAll(".pixel-collage").forEach((canvas) => {
+  const [, , W, H] = canvas.dataset.box.split(",").map(Number);
+  const cell = Number(canvas.dataset.cell);
+  const cols = Math.ceil(W / cell);
+  const rows = Math.ceil(H / cell);
+  const collage = canvas.closest(".collage");
+  const stepEl = document.querySelector(`.collage-step[data-collage="${collage.id}"]`);
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+
+  // a fixed seed, so the scatter is the same every time you scroll past
+  let seed = 1983;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+  let tiles = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const angle = rand() * Math.PI * 2;
+      const dist = 350 + rand() * 1100;
+      tiles.push({
+        x: c * cell,
+        y: r * cell,
+        dx: Math.cos(angle) * dist, // where it starts, relative to its place
+        dy: Math.sin(angle) * dist,
+        s0: 0.25 + rand() * 0.5, // starting size
+        start: rand() * 0.55, // when in the scroll it sets off
+      });
+    }
+  }
+
+  const progress = () => {
+    if (reduceMotion) return 1;
+    if (stacked.matches && stepEl) {
+      const r = stepEl.getBoundingClientRect();
+      return 1 - r.top / r.height;
+    }
+    const r = collage.getBoundingClientRect();
+    return (innerHeight - r.top) / (innerHeight * 0.75);
+  };
+
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  let lastP = null;
+  function draw(force) {
+    const p = Math.min(1, Math.max(0, progress()));
+    if (!force && p === lastP) return;
+    lastP = p;
+    const k = canvas.width / W;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!img.complete || !img.naturalWidth) return;
+    if (p >= 1) {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return;
+    }
+    const sk = img.naturalWidth / W;
+    for (const t of tiles) {
+      const raw = (p - t.start) / 0.45;
+      if (raw <= 0) continue;
+      const e = ease(Math.min(1, raw));
+      const size = cell * (t.s0 + (1 - t.s0) * e);
+      const cx = t.x + cell / 2 + t.dx * (1 - e);
+      const cy = t.y + cell / 2 + t.dy * (1 - e);
+      ctx.globalAlpha = Math.min(1, raw * 3);
+      ctx.drawImage(
+        img,
+        t.x * sk, t.y * sk, cell * sk, cell * sk,
+        (cx - size / 2) * k, (cy - size / 2) * k, size * k + 0.5, size * k + 0.5
+      );
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.min(Math.round(canvas.clientWidth * dpr), 2560) || 1;
+    canvas.width = w;
+    canvas.height = Math.round((w * H) / W);
+    draw(true);
+  }
+
+  let queued = false;
+  const schedule = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      draw();
+    });
+  };
+
+  img.onload = () => {
+    // skip pixels that are all sky (transparent): fewer to move, same picture
+    try {
+      const probe = document.createElement("canvas");
+      probe.width = cols * 4;
+      probe.height = rows * 4;
+      const pc = probe.getContext("2d");
+      pc.drawImage(img, 0, 0, probe.width, probe.height);
+      const a = pc.getImageData(0, 0, probe.width, probe.height).data;
+      tiles = tiles.filter((t) => {
+        const c0 = (t.x / cell) * 4;
+        const r0 = (t.y / cell) * 4;
+        for (let y = r0; y < r0 + 4; y++)
+          for (let x = c0; x < c0 + 4; x++) if (a[(y * probe.width + x) * 4 + 3] > 8) return true;
+        return false;
+      });
+    } catch {
+      /* the image can't be inspected (e.g. opened from disk): just move every pixel */
+    }
+    resize();
+  };
+  img.src = canvas.dataset.src;
+
+  addEventListener("scroll", schedule, { passive: true });
+  addEventListener("resize", resize);
+  stacked.addEventListener?.("change", resize);
+});
