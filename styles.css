@@ -87,17 +87,42 @@ p, ul { margin: 0; }
   top: calc(168 * var(--u));
   width: calc(668 * var(--u));
   height: calc(864 * var(--u));
-  overflow: hidden;
   pointer-events: none;
 }
+.bust__base,
+.bust__snakes { position: absolute; inset: 0; }
 .bust img {
   position: absolute;
-  /* source image is a full 1920×1080 frame, cropped to the bust box */
-  left: -96.41%;
-  top: -19.44%;
-  width: 287.43%;
-  height: 125%;
-  max-width: none;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Snakes: after 2s (script.js adds .snakes-on) the hair area is swapped for a copy run
+   through the #snakes displacement filter (index.html). The face ellipse and everything
+   below the jaw stay on the still base, so only the snakes/hair wriggle. */
+.bust__snakes { display: none; }
+.snakes-on .bust__snakes {
+  display: block;
+  filter: url(#snakes);
+  -webkit-mask-image:
+    radial-gradient(ellipse 24.7% 23.1% at 49.4% 44%, transparent 78%, #000 100%),
+    linear-gradient(#000 50%, transparent 60%);
+  mask-image:
+    radial-gradient(ellipse 24.7% 23.1% at 49.4% 44%, transparent 78%, #000 100%),
+    linear-gradient(#000 50%, transparent 60%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+/* the still base stays fully opaque wherever the moving copy is not, so the bust never
+   turns see-through (the moving copy simply lies on top in the blend zone) */
+.snakes-on .bust__base {
+  -webkit-mask-image:
+    radial-gradient(ellipse 24.7% 23.1% at 49.4% 44%, #000 100%, transparent 116%),
+    linear-gradient(transparent 40%, #000 50%);
+  mask-image:
+    radial-gradient(ellipse 24.7% 23.1% at 49.4% 44%, #000 100%, transparent 116%),
+    linear-gradient(transparent 40%, #000 50%);
 }
 
 .logo {
@@ -154,7 +179,7 @@ p, ul { margin: 0; }
   transition: color 0.25s ease;
 }
 .timeline a.is-muted:hover,
-.timeline a.is-muted:focus-visible { color: color-mix(in srgb, var(--blue) 35%, var(--cream)); }
+.timeline a.is-muted:focus-visible { color: var(--lime); }
 .timeline a:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
 .timeline .is-active { color: var(--blue); }
 
@@ -207,20 +232,167 @@ p, ul { margin: 0; }
 .timeline__list li { margin-inline-start: calc(75 * var(--u)); }
 
 /* ------------------------------------------------------------------
-   Collages (Petah Tikva / Milan …)
+   Collages
 ------------------------------------------------------------------- */
-.collage .layer { will-change: opacity, transform; }
-
-.js .collage .layer.reveal {
-  opacity: 0;
-  transform: translateY(calc(30 * var(--u)));
-  transition: opacity 0.7s ease, transform 0.9s cubic-bezier(.2, .8, .2, 1);
-  transition-delay: calc(var(--i, 0) * 90ms);
+.collage__video {
+  position: absolute;
+  object-fit: cover;
+  pointer-events: none;
 }
-.js .collage.in-view .layer.reveal { opacity: 1; transform: none; }
+
+/* every collage piece is placed by its Figma box (set inline from script.js) */
+.piece {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+img.piece, .piece > img { object-fit: cover; }
+.piece > img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.piece .part { position: absolute; object-fit: fill; }
+.slice { background-repeat: no-repeat; }
+
+/* build: each piece jumps into the frame with a little overshoot, one after another */
+.js .collage .reveal {
+  opacity: 0;
+  transform: translateY(calc(140 * var(--u))) scale(0.85);
+  transition: opacity 0.25s ease, transform 0.3s ease;
+}
+.js .collage.is-built .reveal {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.45s ease, transform 0.75s cubic-bezier(.34, 1.56, .64, 1);
+  transition-delay: calc(var(--i, 0) * 110ms);
+}
+
+/* pieces with their own entrance: skip the default pop-in; when un-built they fade out */
+.js .collage .fx-runway,
+.js .collage .fx-fly,
+.js .collage .fx-slap { transform: none; transition: opacity 0.25s ease; }
+
+/* --- Milan runway: each model scales out of the runway's vanishing point (transform-origin
+   is set per piece in script.js), i.e. walks toward the camera. Size follows a smooth
+   ease-out; the step bob runs on `translate` with its own easing and fades out as she
+   arrives, so there is no jolt at the end. */
+.js .collage .fx-runway { scale: 0.3; }
+.js .collage.is-built .fx-runway {
+  opacity: 1;
+  scale: 1;
+  transition: none;
+  animation:
+    runway-in 2.8s cubic-bezier(.25, .55, .35, 1) var(--d, 0s) both,
+    runway-bob 2.8s linear var(--d, 0s) both;
+}
+@keyframes runway-in {
+  from { scale: 0.3; opacity: 0; }
+  12%  { opacity: 1; }
+  to   { scale: 1; opacity: 1; }
+}
+@keyframes runway-bob {
+  0%, 16%, 32%, 48%, 64%, 80%, 100% { translate: 0 0; animation-timing-function: ease-out; }
+  8%  { translate: 0 calc(-16 * var(--u)); animation-timing-function: ease-in; }
+  24% { translate: 0 calc(-14 * var(--u)); animation-timing-function: ease-in; }
+  40% { translate: 0 calc(-12 * var(--u)); animation-timing-function: ease-in; }
+  56% { translate: 0 calc(-9 * var(--u)); animation-timing-function: ease-in; }
+  72% { translate: 0 calc(-6 * var(--u)); animation-timing-function: ease-in; }
+  88% { translate: 0 calc(-3 * var(--u)); animation-timing-function: ease-in; }
+}
+
+/* --- Milan plane: flies in from beyond the right edge, growing as it approaches */
+.js .collage .fx-fly { translate: calc(1440 * var(--u)) calc(-270 * var(--u)); scale: 0.55; }
+.js .collage.is-built .fx-fly {
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+  transition: opacity 0.4s ease var(--d, 0s),
+              translate 2s cubic-bezier(.2, .75, .3, 1) var(--d, 0s),
+              scale 2s cubic-bezier(.2, .75, .3, 1) var(--d, 0s);
+}
+
+/* --- New York: Manhattan falls in building by building, each landing with a small bounce */
+.js .collage .fx-fall {
+  opacity: 1; transform: none; translate: 0 calc(-1250 * var(--u)); transition: none;
+  will-change: translate; /* each slice gets its own layer up front, so the drop doesn't stall the page */
+}
+.js .collage.is-built .fx-fall {
+  translate: 0 0;
+  animation: fall 0.95s var(--d, 0s) both;
+}
+@keyframes fall {
+  0%   { translate: 0 calc(-1250 * var(--u)); animation-timing-function: cubic-bezier(.5, 0, .9, .5); }
+  62%  { translate: 0 0; animation-timing-function: ease-out; }
+  76%  { translate: 0 calc(-34 * var(--u)); animation-timing-function: ease-in; }
+  88%  { translate: 0 0; animation-timing-function: ease-out; }
+  94%  { translate: 0 calc(-8 * var(--u)); animation-timing-function: ease-in; }
+  100% { translate: 0 0; }
+}
+
+/* --- back home: Barbie the dog pants (tongue pivots where it leaves the mouth) */
+.fx-pant { transform-origin: 66% 8%; }
+.collage.is-built .fx-pant { animation: pant 0.36s ease-in-out 0.9s infinite alternate; }
+@keyframes pant {
+  from { transform: rotate(0deg) scale(1, 1); }
+  to   { transform: rotate(-5deg) scale(1.05, 1.28) translateY(4%); }
+}
+
+/* --- sparkles: logos get slapped on like stickers, one after another */
+.js .collage .fx-slap { scale: 1.7; }
+.js .collage.is-built .fx-slap {
+  opacity: 1;
+  scale: 1;
+  transition: none;
+  animation: slap 0.55s var(--d, calc(250ms + var(--i, 0) * 380ms)) both;
+}
+@keyframes slap {
+  0%   { opacity: 0; scale: 1.7; transform: rotate(9deg) translateY(calc(-30 * var(--u)));
+         filter: drop-shadow(0 calc(40 * var(--u)) calc(30 * var(--u)) rgba(14, 28, 108, 0.35));
+         animation-timing-function: cubic-bezier(.55, 0, .8, .4); }
+  55%  { opacity: 1; scale: 0.94; transform: rotate(-1.5deg);
+         filter: drop-shadow(0 calc(2 * var(--u)) calc(3 * var(--u)) rgba(14, 28, 108, 0.3));
+         animation-timing-function: ease-out; }
+  78%  { scale: 1.03; transform: rotate(0.6deg); }
+  100% { opacity: 1; scale: 1; transform: none;
+         filter: drop-shadow(0 calc(4 * var(--u)) calc(8 * var(--u)) rgba(14, 28, 108, 0.22)); }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .js .collage .layer.reveal { opacity: 1; transform: none; transition: none; }
+  /* doubled classes outrank the .is-built rules above */
+  .js .collage.collage .reveal.reveal { opacity: 1; transform: none; translate: none; scale: none; transition: none; animation: none; }
+  .collage.collage .fx-pant { animation: none; }
+}
+
+/* ------------------------------------------------------------------
+   Stacked scrolling (from 1983 on): frames pin to the top and the next
+   one slides over; one wheel flick / key press = one step (script.js).
+------------------------------------------------------------------- */
+#story { position: relative; container-type: inline-size; }
+html.is-stepping { scroll-behavior: auto; scroll-snap-type: none; } /* while script.js drives the scroll */
+.snap { position: absolute; left: 0; width: 1px; height: 1px; pointer-events: none; }
+/* one step = one frame: 16:9 of the width, but never taller than the window,
+   so a pinned frame is always seen whole (keep in sync with .snap in script.js) */
+#story { --step: min(56.25cqw, 100vh); }
+.collage-step { height: var(--step); } /* a frame-tall pause in which the collage builds */
+
+@media (min-width: 701px) {
+  /* touch screens keep native snapping; wheel/keys are stepped by script.js */
+  @media (hover: none) and (pointer: coarse) {
+    html { scroll-snap-type: y mandatory; }
+    .home, .hello, .snap { scroll-snap-align: start; scroll-snap-stop: always; }
+  }
+
+
+  #story > .frame {
+    position: sticky;
+    top: 0;
+    aspect-ratio: auto;
+    height: var(--step);
+  }
+  /* the frame sliding in casts a soft shadow onto the one it covers */
+  #story > .frame + .frame,
+  #story > .collage-step + .frame { box-shadow: 0 -12px 40px rgba(14, 28, 108, 0.18); }
+}
+
+@media (max-width: 700px) {
+  .snap, .collage-step { display: none; }
 }
 
 /* ------------------------------------------------------------------
