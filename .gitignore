@@ -1,2 +1,6 @@
+# Source files kept outside assets/ — not part of the site
+/*.png
+/*.jpg
+/*.mov
+/*.mp4
 .DS_Store
-.vscode/
