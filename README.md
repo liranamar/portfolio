@@ -4,8 +4,7 @@
 
 ציר זמן אישי: מפתח תקווה, דרך מילאנו וניו יורק, חזרה הביתה ועד sparkles. כל תחנה היא פריים במסך מלא, והמעבר ביניהם נעשה בגלילה.
 
-**לאתר החי:** https://liranamar.github.io/portfolio/
-
+**לאתר החי:** https://liranamar.github.io/life_timeline/
 </div>
 
 ![האתר: פריים הפתיחה](docs/01-hero.jpg)
