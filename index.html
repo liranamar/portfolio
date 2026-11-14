@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Libre+Caslon+Display&family=Neonderthaw&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
   <main>
@@ -17,23 +17,7 @@
     <section class="frame home" id="home" aria-label="Home">
       <img class="layer cover" src="assets/img/hero-bg.jpg" alt="">
       <div class="stripe"></div>
-      <!-- the bust is drawn twice: a still base, and a copy run through the #snakes
-           filter that only shows around the hair, so the snakes wriggle while the face stays put -->
-      <div class="bust" aria-hidden="true">
-        <div class="bust__base"><img src="assets/img/hero-bust.png" alt=""></div>
-        <div class="bust__snakes"><img src="assets/img/hero-bust.png" alt=""></div>
-      </div>
-      <svg id="snake-motion" class="visually-hidden" aria-hidden="true" focusable="false">
-        <filter id="snakes" x="-5%" y="-5%" width="110%" height="110%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.018 0.026" numOctaves="1" seed="7" result="noise">
-            <animate attributeName="baseFrequency" dur="3.2s" repeatCount="indefinite" begin="2s"
-                     values="0.018 0.026; 0.023 0.031; 0.018 0.026"/>
-          </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G">
-            <animate attributeName="scale" from="0" to="9" begin="2s" dur="1.2s" fill="freeze"/>
-          </feDisplacementMap>
-        </filter>
-      </svg>
+      <img class="bust" src="assets/img/hero-bust.png" alt="">
       <a class="logo" href="#hello" aria-label="Scroll to introduction">
         <img src="assets/img/logo.svg" width="133" height="125" alt="">
       </a>
@@ -52,6 +36,6 @@
     <div id="story"></div>
   </main>
 
-  <script src="script.js?v=2"></script>
+  <script src="script.js?v=16"></script>
 </body>
 </html>

@@ -5,12 +5,16 @@
    Collage pieces: { file, box: [left, top, width, height] in Figma px, ... }
      rotate: degrees
      fx:     entrance effect instead of the default pop-in (see styles.css):
-             "runway" | "fly" | "pixels" | "slap"
+             "runway" | "cross" | "slap" | "sticker" | "rise" | "drop" | "stamp" | "slide" |
+             "road" | "drive"
+     fill:   a plain block of colour instead of an image (e.g. "var(--lime)")
      delay:  ms before the entrance starts
-     parts:  small moving images inside the piece, at: [left, top, width, height] in % of it
-     cell:   for fx "pixels" — size (Figma px) of the square pixels the image is broken
-             into; they fly together into the whole picture as you scroll
-   "under" pieces show straight away; "over" pieces build on the next scroll step.
+     parts:  images riding inside the piece, at: [left, top, width, height] in % of it,
+             optional rotate (degrees) and fx
+   "under" pieces show straight away; "over" pieces build on the next scroll step —
+   or, with `timed: true`, by themselves once the frame has arrived (timed by their delays).
+   `runway: { delay }`: the lime stripe glitches into the runway floor (Figma "Rectangle 2").
+   `noStripe: true`: no vertical stripe (the collage brings its own lime shape).
 ------------------------------------------------------------------- */
 const IMG = "assets/img/";
 const FULL = [0, 0, 1920, 1080];
@@ -26,17 +30,31 @@ const chapters = [
       // background video; it bleeds past the frame like in Figma
       video: { src: "assets/video/petah-tikva.mp4", box: [-79, -226, 2026, 1414] },
       under: [{ file: "pt-street.jpg", box: FULL }], // video placeholder until it plays
+      // no extra scroll step: the video plays with the stripe, the city logo comes up after 3s,
+      // and 2s later everything else gets stuck on like 90s stickers, one after another, each a
+      // little crooked. The white die-cut border + shadow are baked into the "-sticker" PNGs
+      // (20px padding each side), so the animation only moves pixels and stays smooth.
+      timed: true,
       over: [
-        { file: "pt-logo.png", box: [607, 129, 706, 803] },
-        { file: "pt-aviv.png", box: [0, 627, 309, 455] },
-        { file: "pt-abc.png", box: [1425, 0, 495, 432] },
-        { file: "pt-beverly.png", box: [1092, 505, 828, 577] },
-        { file: "pt-burger.png", box: [127, 695, 354, 387] },
-        { file: "pt-barbie.png", box: [816, 744, 389, 338] },
-        { file: "pt-berry.png", box: [610, 501, 360, 581] },
-        { file: "pt-highfive.png", box: [0, 0, 415, 113] },
-        { file: "pt-rosh1.png", box: [1238, 391, 352, 118] },
-        { file: "pt-dance.png", box: [0, 268, 1054, 812] },
+        { file: "pt-logo.png", box: [607, 129, 706, 803], delay: 3000 },
+        ...[
+          // [file, box, tilt°] — stacking order as in Figma (later = on top), stuck on in this order
+          ["pt-aviv.png", [0, 627, 309, 455], -4],
+          ["pt-abc.png", [1425, 0, 495, 432], -3],
+          ["pt-beverly.png", [1092, 505, 828, 577], 2],
+          ["pt-burger.png", [127, 695, 354, 387], 4],
+          ["pt-barbie.png", [816, 744, 389, 338], -3],
+          ["pt-berry.png", [610, 501, 360, 581], 3],
+          ["pt-highfive.png", [0, 0, 415, 113], 3],
+          ["pt-rosh1.png", [1238, 391, 352, 118], -5],
+          ["pt-dance.png", [0, 268, 1054, 812], -2],
+        ].map(([file, [x, y, w, h], rotate], k) => ({
+          file: file.replace(".png", "-sticker.png"),
+          box: [x - 20, y - 20, w + 40, h + 40],
+          rotate,
+          fx: "sticker",
+          delay: 5000 + k * 260,
+        })),
       ],
     },
   },
@@ -50,13 +68,24 @@ const chapters = [
     ],
     collage: {
       label: "Milan",
+      // the frame arrives showing only the Duomo and the stripe; after 1s the stripe glitches
+      // into the runway, then the models walk down it (front model first) and the El Al plane
+      // crosses the sky from right to left, again every few seconds
+      timed: true,
+      runway: { delay: 1000 },
       under: [{ file: "milan-duomo.jpg", box: FULL }],
-      // the runway is split into depth layers (back to front): the lead model walks in first
       over: [
-        { file: "milan-elal.png", box: [1055, 76, 847, 267], fx: "fly", delay: 500 },
-        { file: "milan-runway-line.png", box: [0, 62, 1082, 1018], fx: "runway", delay: 700 },
-        { file: "milan-runway-second.png", box: [439, 187, 265, 828], fx: "runway", delay: 350 },
-        { file: "milan-runway-lead.png", box: [698, 66, 384, 1014], fx: "runway", delay: 0 },
+        { file: "milan-elal.png", box: [1055, 76, 847, 267], fx: "cross", delay: 2000 },
+        // stacking order as in Figma; [layer, box, walk-in order]
+        ...[
+          [1, [722, 249, 255, 831], 1],
+          [2, [964, 64, 401, 1016], 0],
+          [3, [604, 311, 168, 708], 2],
+          [4, [512, 378, 150, 598], 3],
+          [5, [431, 401, 130, 531], 4],
+          [6, [338, 440, 137, 438], 5],
+          [8, [292, 445, 120, 396], 6],
+        ].map(([n, box, k]) => ({ file: `milan-model-${n}.png`, box, fx: "runway", delay: 2000 + k * 380 })),
       ],
     },
   },
@@ -71,12 +100,32 @@ const chapters = [
     ],
     collage: {
       label: "New York",
-      // rainbow glow GIF behind everything; portrait, turned on its side as in Figma
-      // (stretched to every edge — further than in Figma — so no gap shows while Manhattan assembles)
+      // rainbow glow GIF behind everything; portrait, turned on its side
+      // (stretched to every edge so it fills the frame while it is the only thing showing)
       under: [{ file: "ny-rainbow.gif", box: [370, -470, 1180, 1920], rotate: -90 }],
-      // Manhattan + Brooklyn Bridge (transparent sky, so the lime stripe shows above the towers);
-      // a pixel collage: scattered square pixels gather into the whole picture, driven by the scroll
-      over: [{ file: "ny-manhattan.png", box: [0, -100, 1920, 1280], fx: "pixels", cell: 40 }],
+      // the skyline photo, cut apart in Figma, assembles itself over the GIF: the river slides up
+      // from the bottom; the buildings fall from the top almost together (40ms apart); once they
+      // have all landed the sky drops in behind them; the Brooklyn Bridge stamps down; and the
+      // lime deck shoots in from the right along the bridge like a bullet.
+      // Stacking order as in Figma.
+      timed: true,
+      over: [
+        // timeline (ms): river 600–1500 · buildings 1500–2450 · sky 2550–3300 ·
+        // bridge 3400–3850 · deck 3950–4230
+        { file: "ny-sky.png", box: [0, 0, 1960, 792], fx: "drop", delay: 2550 },
+        { file: "ny-bridge.png", box: [0, 468, 1960, 454], fx: "stamp", delay: 3400 },
+        { file: "ny-buildings-2.png", box: [1375, 0, 129, 625], fx: "drop", delay: 1620 },
+        { file: "ny-buildings-3.png", box: [1390, 398, 565, 467], fx: "drop", delay: 1700 },
+        { file: "ny-river.png", box: [0, 742, 1960, 349], fx: "rise", delay: 600 },
+        { file: "ny-buildings-5.png", box: [15, 156, 399, 688], fx: "drop", delay: 1500 },
+        { file: "ny-buildings-6.png", box: [381, 268, 411, 596], fx: "drop", delay: 1540 },
+        { file: "ny-buildings-7.png", box: [698, 294, 517, 598], fx: "drop", delay: 1580 },
+        { file: "ny-buildings-8.png", box: [1482, 189, 304, 510], fx: "drop", delay: 1660 },
+        // the deck: Figma draws it upright and turns it -90°, so the box here is the upright one,
+        // centred where the turned shape sits. Once the bridge has landed it shoots in from beyond
+        // the right edge along the bridge's slope (--from).
+        { file: "ny-deck.svg", box: [784, -311, 354, 1914], rotate: -90, fx: "slide", delay: 3950, from: [2300, 389] },
+      ],
     },
   },
   {
@@ -86,16 +135,26 @@ const chapters = [
     bullets: ["back home"],
     collage: {
       label: "back home",
-      under: [],
+      // the "welcome to Petah Tikva" wall is there as soon as the frame arrives; the lime stripe
+      // is now a road that slides in from the left, then the Barbie scooter drives along it from
+      // the left into place, with Barbie the dog panting on the seat
+      timed: true,
+      noStripe: true,
+      under: [{ file: "home-welcome.jpg", box: [4, 0, 1912, 956], alt: "Welcome to Petah Tikva" }],
       over: [
-        { file: "home-pt-logo.png", box: [1136, 157, 656, 297], alt: "Petah Tikva — from moshava to metropolis" },
+        { fill: "var(--lime)", box: [0, 928, 1916, 152], fx: "road", delay: 300 },
         {
           file: "home-scooter.png",
           box: [0, 444, 848, 636],
-          // Barbie the dog pants: the tongue is cut out and animated over a dark mouth
-          parts: [{ file: "home-tongue.png", at: [38.71, 33.65, 4.47, 3.53], fx: "pant" }],
+          fx: "drive",
+          delay: 1000,
+          parts: [
+            // Barbie the dog pants: the tongue is cut out and animated over a dark mouth
+            { file: "home-tongue.png", at: [38.71, 33.65, 4.47, 3.53], fx: "pant" },
+            // the Barbie logo is stuck on the scooter, so it rides along with it
+            { file: "home-barbie-logo.png", at: [26.43, 63.51, 38.33, 28.77], rotate: 15 },
+          ],
         },
-        { file: "home-barbie-logo.png", box: [490, 540, 325, 183], alt: "Barbie" },
       ],
     },
   },
@@ -103,9 +162,15 @@ const chapters = [
     year: "2017",
     place: "sparkles",
     placeX: 1522,
-    bullets: ["that’s me"],
+    bullets: ["that’s me", "graphic designer", "lecturer"],
+    listSize: 40, // Figma: this frame's list is set smaller (40px, 60px indent)
+    listIndent: 60,
     collage: {
       label: "sparkles",
+      // builds as soon as the frame arrives; once the last pastry is down, the cursor turns
+      // into a pastry and moving the mouse scatters more of them (see "Pastry trail" below)
+      timed: true,
+      pastryTrail: true,
       under: [],
       // stuck on one after another like stickers: the logos first, then the "משה" pastries
       // rain on at the spots and angles set in Figma
@@ -123,7 +188,7 @@ const chapters = [
           [1106.23, 888.57, 132.406, 80.595, 128.26],
           [1828.43, 287.64, 132.406, 80.595, 34.34],
           [245.85, 44.5, 132.406, 80.595, 16.89],
-          [1321.1, 171.02, 211.997, 129.042, -67.37],
+          [1279.34, 279.14, 211.997, 129.042, -67.37],
           [1734.54, -37.15, 142.6, 86.8, 16.89],
         ].map(([x, y, w, h, rotate, below], k) => ({
           file: "moshe-sticker.png",
@@ -146,10 +211,13 @@ const esc = (s) =>
 
 const idFor = (c) => `y${c.year}`;
 const u = (n) => `calc(${n} * var(--u))`;
-const boxStyle = ([x, y, w, h]) => `left:${u(x)};top:${u(y)};width:${u(w)};height:${u(h)};`;
+// positions are offset by --ox/--oy: the artboard is centered in the full-window frame
+const boxStyle = ([x, y, w, h]) =>
+  `left:calc(var(--ox) + ${x} * var(--u));top:calc(var(--oy) + ${y} * var(--u));width:${u(w)};height:${u(h)};`;
 
-// the runway's vanishing point (Figma px, off-frame left): models scale out from here
-const RUNWAY_VP = [-422.4, 594];
+// the runway's vanishing point (Figma px): where the edges of "Rectangle 2" meet;
+// the models walk out of it toward the camera
+const RUNWAY_VP = [170, 846];
 
 function timelineFrame(active) {
   const years = chapters
@@ -162,7 +230,7 @@ function timelineFrame(active) {
   const places = chapters
     .map((c) => {
       const on = c === active;
-      return `<a href="#${idFor(c)}" class="timeline__place ${on ? "is-active" : "is-muted"}" style="left:calc(${c.placeX} * var(--u))" tabindex="-1">${esc(c.place)}</a>`;
+      return `<a href="#${idFor(c)}" class="timeline__place ${on ? "is-active" : "is-muted"}" style="left:calc(var(--ox) + ${c.placeX} * var(--u))" tabindex="-1">${esc(c.place)}</a>`;
     })
     .join("");
 
@@ -175,7 +243,9 @@ function timelineFrame(active) {
 
   return `
     <section class="frame timeline" id="${idFor(active)}" aria-label="${active.year}, ${esc(active.place)}">
-      <ul class="timeline__list">${bullets}</ul>
+      <ul class="timeline__list"${
+        active.listSize ? ` style="--list-size:${active.listSize};--list-indent:${active.listIndent}"` : ""
+      }>${bullets}</ul>
       <div class="stripe"></div>
       <img class="timeline__rule" src="${IMG}line.svg" alt="">
       <nav class="timeline__years" aria-label="Timeline">${years}</nav>
@@ -188,34 +258,41 @@ function piece(p, i) {
   const builds = i !== undefined;
   const [x, y, w, h] = p.box;
 
-  if (p.fx === "pixels") {
-    // drawn on a canvas by the scroll (see "Pixel collage" below)
-    return `<canvas class="piece pixel-collage" style="${boxStyle(p.box)}" data-src="${IMG}${p.file}" data-box="${p.box.join(",")}" data-cell="${p.cell}" aria-hidden="true"></canvas>`;
-  }
-
   const cls = ["piece", builds && "reveal", p.fx && `fx-${p.fx}`].filter(Boolean).join(" ");
   let style = boxStyle(p.box);
   if (builds) style += `--i:${i};`;
   if (p.delay) style += `--d:${p.delay}ms;`;
   if (p.rotate) style += `rotate:${p.rotate}deg;`;
+  if (p.from) style += `--from-x:${u(p.from[0])};--from-y:${u(p.from[1])};`;
   if (p.fx === "runway") style += `transform-origin:${u(RUNWAY_VP[0] - x)} ${u(RUNWAY_VP[1] - y)};`;
 
   const img = (file, alt, extra = "") =>
     `<img${extra} src="${IMG}${file}" alt="${esc(alt || "")}" loading="lazy" decoding="async">`;
 
+  if (p.fill) return `<div class="${cls}" style="${style}background:${p.fill}" aria-hidden="true"></div>`;
   if (!p.parts) return img(p.file, p.alt, ` class="${cls}" style="${style}"`);
 
   const parts = p.parts
-    .map(({ file, at: [l, t, pw, ph], fx }) =>
-      img(file, "", ` class="part${fx ? ` fx-${fx}` : ""}" style="left:${l}%;top:${t}%;width:${pw}%;height:${ph}%"`)
+    .map(({ file, at: [l, t, pw, ph], fx, rotate }) =>
+      img(
+        file,
+        "",
+        ` class="part${fx ? ` fx-${fx}` : ""}" style="left:${l}%;top:${t}%;width:${pw}%;height:${ph}%${rotate ? `;rotate:${rotate}deg` : ""}"`
+      )
     )
     .join("");
   return `<div class="${cls}" style="${style}">${img(p.file, p.alt)}${parts}</div>`;
 }
 
 function collageFrame(c) {
-  const { label, video, under, over, stripeOnTop } = c.collage;
-  const stripe = `<div class="stripe"></div>`;
+  const { label, video, under, over, stripeOnTop, timed, runway, noStripe, pastryTrail } = c.collage;
+  // the stripe, or (runway) three copies of it that glitch into the runway: cyan + magenta
+  // ghosts for the colour split, the lime one on top
+  const stripe = runway
+    ? `<div class="glitch-runway" style="--d:${runway.delay}ms" aria-hidden="true">${'<div></div>'.repeat(3)}</div>`
+    : noStripe
+      ? ""
+      : `<div class="stripe"></div>`;
   const vid = video
     ? `<video class="collage__video" style="${boxStyle(video.box)}" src="${video.src}" muted loop playsinline preload="none" aria-hidden="true"></video>`
     : "";
@@ -224,16 +301,20 @@ function collageFrame(c) {
     over.map((p, i) => (!!p.belowStripe === below ? piece(p, i) : "")).join("");
 
   return `
-    <section class="frame collage" id="${idFor(c)}-collage" aria-label="${esc(label)}">
+    <section class="frame collage${timed ? " is-timed" : ""}${pastryTrail ? " has-pastry-trail" : ""}" id="${idFor(c)}-collage" aria-label="${esc(label)}">
       ${under.map((p) => piece(p)).join("")}
       ${vid}
       ${built(true)}
       ${stripeOnTop ? "" : stripe}
       ${built(false)}
       ${stripeOnTop ? stripe : ""}
+      ${
+        // the end of the story: once everything has landed, a button back to the top opens up
+        pastryTrail ? `<a class="again" href="#home">let’s do it again</a>` : ""
+      }
     </section>${
-      // the extra scroll step only exists when there is something to build
-      over.length ? `\n    <div class="collage-step" data-collage="${idFor(c)}-collage" aria-hidden="true"></div>` : ""
+      // the extra scroll step only exists when there is something to build on scroll
+      over.length && !timed ? `\n    <div class="collage-step" data-collage="${idFor(c)}-collage" aria-hidden="true"></div>` : ""
     }`;
 }
 
@@ -268,15 +349,14 @@ const stops = () => [
 ];
 
 let animating = false;
-let queued = 0;
-let queuedDir = 0;
+let arrivedAt = -Infinity; // when the last step finished (performance.now / event time base)
+const SETTLE = 250; // ms after arriving during which input is still swallowed
+// Input while a step is moving (or just after it lands) is ignored, never queued: every frame
+// waits for its own, new scroll. A queued step used to fire on its own right after arriving.
 function requestStep(dir) {
-  if (!animating) return step(dir);
-  if (dir !== queuedDir) queued = 0; // changed direction: forget the old queue
-  queuedDir = dir;
-  queued = 1; // at most one step waits; never a run of frames
+  if (animating || performance.now() - arrivedAt < SETTLE) return;
+  step(dir);
 }
-const snakeSvg = document.getElementById("snake-motion");
 function scrollToY(target, duration = 1100) {
   if (reduceMotion) duration = 0;
   const start = scrollY;
@@ -285,7 +365,6 @@ function scrollToY(target, duration = 1100) {
   animating = true;
   const html = document.documentElement;
   html.classList.add("is-stepping"); // turns off CSS smooth-scroll / snapping while we drive
-  snakeSvg?.pauseAnimations?.();
   const t0 = performance.now();
   const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2); // easeInOutCubic
   const frame = (now) => {
@@ -294,12 +373,8 @@ function scrollToY(target, duration = 1100) {
     if (t < 1) requestAnimationFrame(frame);
     else {
       animating = false;
+      arrivedAt = performance.now();
       html.classList.remove("is-stepping");
-      if (scrollY < innerHeight) snakeSvg?.unpauseAnimations?.();
-      if (queued > 0) {
-        queued--;
-        step(queuedDir);
-      }
     }
   };
   requestAnimationFrame(frame);
@@ -360,7 +435,7 @@ addEventListener(
       if (d < peak * 0.5) decayed = true;
     }
     if (gestureUsed || d < 3) return;
-    gestureUsed = true;
+    gestureUsed = true; // whatever happens, this gesture is spent
     requestStep(Math.sign(e.deltaY));
   },
   { passive: false }
@@ -460,6 +535,20 @@ if ("IntersectionObserver" in window) {
     { threshold: 0.3 }
   );
 
+  // 3c) desktop, timed collages: start the clock once the frame has fully slid in;
+  // reset when scrolled back above it, so it plays again next time
+  const buildTimed = new IntersectionObserver(
+    (entries) => {
+      if (!stacked.matches) return;
+      for (const e of entries) {
+        if (e.intersectionRatio > 0.97) e.target.classList.add("is-built");
+        else if (e.boundingClientRect.top > 0 && e.intersectionRatio < 0.5) e.target.classList.remove("is-built");
+      }
+    },
+    { threshold: [0, 0.5, 0.98] }
+  );
+  document.querySelectorAll(".collage.is-timed").forEach((el) => buildTimed.observe(el));
+
   document.querySelectorAll(".collage").forEach((el) => {
     preload.observe(el);
     playback.observe(el);
@@ -467,139 +556,57 @@ if ("IntersectionObserver" in window) {
   });
   document.querySelectorAll(".collage-step").forEach((el) => build.observe(el));
 
-  // 4) hero: the snakes start moving 2s after load; pause the effect when off screen
-  const snakes = document.getElementById("snake-motion");
-  const home = document.querySelector(".home");
-  if (snakes && home && !reduceMotion) {
-    setTimeout(() => home.classList.add("snakes-on"), 2000);
-    new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) snakes.unpauseAnimations();
-      else snakes.pauseAnimations();
-    }).observe(home);
-  }
 } else {
   document.querySelectorAll(".collage").forEach((el) => el.classList.add("is-built"));
 }
 
 /* ------------------------------------------------------------------
-   Pixel collage (New York): the image is broken into square pixels that
-   start scattered around the frame and gather into the whole picture.
-   Progress follows the scroll: on desktop, the collage's build step
-   (0 when the frame has just arrived, 1 one step later); on phones,
-   the frame's way up the screen. Scroll back and it falls apart again.
+   Pastry trail (sparkles): once every sticker and pastry has landed,
+   the mouse pointer becomes a pastry, and moving it over the frame
+   drops more pastries along the way — each at a random angle and
+   size. Mouse only (touch scrolls); reset when you scroll back up.
+   The same moment opens the "let's do it again" button (.pastry-mode).
 ------------------------------------------------------------------- */
-document.querySelectorAll(".pixel-collage").forEach((canvas) => {
-  const [, , W, H] = canvas.dataset.box.split(",").map(Number);
-  const cell = Number(canvas.dataset.cell);
-  const cols = Math.ceil(W / cell);
-  const rows = Math.ceil(H / cell);
-  const collage = canvas.closest(".collage");
-  const stepEl = document.querySelector(`.collage-step[data-collage="${collage.id}"]`);
-  const ctx = canvas.getContext("2d");
-  const img = new Image();
+document.querySelectorAll(".collage.has-pastry-trail").forEach((frame) => {
+  const READY_AFTER = 4200; // ms after the build starts: the last pastry has landed by then
+  const STEP = 70; // px of mouse travel between two new pastries
+  const MAX = 160; // oldest ones are removed beyond this
+  let timer = null;
+  let last = null;
+  const added = [];
 
-  // a fixed seed, so the scatter is the same every time you scroll past
-  let seed = 1983;
-  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-  let tiles = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const angle = rand() * Math.PI * 2;
-      const dist = 350 + rand() * 1100;
-      tiles.push({
-        x: c * cell,
-        y: r * cell,
-        dx: Math.cos(angle) * dist, // where it starts, relative to its place
-        dy: Math.sin(angle) * dist,
-        s0: 0.25 + rand() * 0.5, // starting size
-        start: rand() * 0.55, // when in the scroll it sets off
-      });
-    }
-  }
-
-  const progress = () => {
-    if (reduceMotion) return 1;
-    if (stacked.matches && stepEl) {
-      const r = stepEl.getBoundingClientRect();
-      return 1 - r.top / r.height;
-    }
-    const r = collage.getBoundingClientRect();
-    return (innerHeight - r.top) / (innerHeight * 0.75);
+  const reset = () => {
+    clearTimeout(timer);
+    timer = null;
+    // touch the class only when it is there: even a no-op classList.remove() counts as a
+    // mutation, which would wake the observer below again and loop forever (frozen page)
+    if (frame.classList.contains("pastry-mode")) frame.classList.remove("pastry-mode");
+    added.splice(0).forEach((el) => el.remove());
+    last = null;
   };
+  // follow the build: start the clock when the collage is built, undo when it is un-built
+  new MutationObserver(() => {
+    if (frame.classList.contains("is-built")) {
+      if (!timer && !frame.classList.contains("pastry-mode"))
+        timer = setTimeout(() => frame.classList.add("pastry-mode"), reduceMotion ? 0 : READY_AFTER);
+    } else reset();
+  }).observe(frame, { attributes: true, attributeFilter: ["class"] });
 
-  const ease = (t) => 1 - Math.pow(1 - t, 3);
-  let lastP = null;
-  function draw(force) {
-    const p = Math.min(1, Math.max(0, progress()));
-    if (!force && p === lastP) return;
-    lastP = p;
-    const k = canvas.width / W;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!img.complete || !img.naturalWidth) return;
-    if (p >= 1) {
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      return;
-    }
-    const sk = img.naturalWidth / W;
-    for (const t of tiles) {
-      const raw = (p - t.start) / 0.45;
-      if (raw <= 0) continue;
-      const e = ease(Math.min(1, raw));
-      const size = cell * (t.s0 + (1 - t.s0) * e);
-      const cx = t.x + cell / 2 + t.dx * (1 - e);
-      const cy = t.y + cell / 2 + t.dy * (1 - e);
-      ctx.globalAlpha = Math.min(1, raw * 3);
-      ctx.drawImage(
-        img,
-        t.x * sk, t.y * sk, cell * sk, cell * sk,
-        (cx - size / 2) * k, (cy - size / 2) * k, size * k + 0.5, size * k + 0.5
-      );
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  function resize() {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    const w = Math.min(Math.round(canvas.clientWidth * dpr), 2560) || 1;
-    canvas.width = w;
-    canvas.height = Math.round((w * H) / W);
-    draw(true);
-  }
-
-  let queued = false;
-  const schedule = () => {
-    if (queued) return;
-    queued = true;
-    requestAnimationFrame(() => {
-      queued = false;
-      draw();
-    });
-  };
-
-  img.onload = () => {
-    // skip pixels that are all sky (transparent): fewer to move, same picture
-    try {
-      const probe = document.createElement("canvas");
-      probe.width = cols * 4;
-      probe.height = rows * 4;
-      const pc = probe.getContext("2d");
-      pc.drawImage(img, 0, 0, probe.width, probe.height);
-      const a = pc.getImageData(0, 0, probe.width, probe.height).data;
-      tiles = tiles.filter((t) => {
-        const c0 = (t.x / cell) * 4;
-        const r0 = (t.y / cell) * 4;
-        for (let y = r0; y < r0 + 4; y++)
-          for (let x = c0; x < c0 + 4; x++) if (a[(y * probe.width + x) * 4 + 3] > 8) return true;
-        return false;
-      });
-    } catch {
-      /* the image can't be inspected (e.g. opened from disk): just move every pixel */
-    }
-    resize();
-  };
-  img.src = canvas.dataset.src;
-
-  addEventListener("scroll", schedule, { passive: true });
-  addEventListener("resize", resize);
-  stacked.addEventListener?.("change", resize);
+  frame.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse" || !frame.classList.contains("pastry-mode")) return;
+    const r = frame.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    if (last && Math.hypot(x - last.x, y - last.y) < STEP) return;
+    last = { x, y };
+    const img = document.createElement("img");
+    img.src = `${IMG}moshe-sticker.png`;
+    img.alt = "";
+    img.className = "pastry-drop";
+    const w = 70 + Math.random() * 170; // Figma px, like the pastries already on the frame
+    img.style.cssText = `left:${x}px;top:${y}px;width:calc(${w.toFixed(0)} * var(--u));rotate:${(Math.random() * 360).toFixed(0)}deg`;
+    frame.appendChild(img);
+    added.push(img);
+    if (added.length > MAX) added.shift().remove();
+  });
 });

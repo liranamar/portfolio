@@ -43,8 +43,13 @@ p, ul { margin: 0; }
 }
 
 /* ------------------------------------------------------------------
-   Frame: every Figma frame is a 1920×1080 artboard.
-   --u = one Figma pixel, scaled to the viewport width.
+   Frame: every Figma frame is a 1920×1080 artboard. On desktop a frame
+   fills the whole window and the artboard is centered in it.
+   --fit  = one Figma px, scaled so the whole artboard shows (contain)
+   --fill = one Figma px, scaled so the artboard covers the frame (cover)
+   --u    = the unit content is placed with: --fit, but --fill for the
+            photo-based frames (hero, collages) so pictures reach every edge
+   --ox / --oy = where the artboard's top-left corner sits in the frame
 ------------------------------------------------------------------- */
 .frame {
   position: relative;
@@ -54,7 +59,33 @@ p, ul { margin: 0; }
   container-type: inline-size;
   background: var(--cream);
 }
-.frame > * { --u: calc(100cqw / 1920); }
+.frame > * {
+  --fit: calc(100cqw / 1920);
+  --fill: var(--fit);
+  --u: var(--fit);
+  --ox: calc((100cqw - 1920 * var(--u)) / 2);
+  --oy: 0px;
+}
+/* the hero photo already contains the bust, so the overlaid bust (and the logo above it)
+   scale like the photo */
+.home > *, .collage > * { --u: var(--fill); }
+
+@media (min-width: 701px) {
+  .frame {
+    aspect-ratio: auto;
+    height: 100vh;
+    height: 100svh;
+    container-type: size;
+  }
+  .frame > * {
+    --fit: min(100cqw / 1920, 100cqh / 1080);
+    --fill: max(100cqw / 1920, 100cqh / 1080);
+    --oy: calc((100cqh - 1080 * var(--u)) / 2);
+  }
+  /* hero: when a wide window crops the photo, crop only its bottom, so the logo at the top
+     always shows (the photo is pinned to the top to match) */
+  .home > * { --oy: 0px; }
+}
 
 .layer {
   position: absolute;
@@ -70,7 +101,7 @@ p, ul { margin: 0; }
   position: absolute;
   top: 0;
   left: 50%;
-  width: calc(224 * var(--u));
+  width: calc(224 * var(--fit)); /* same width in every frame */
   height: 100%;
   transform: translateX(-50%);
   background: var(--lime);
@@ -80,55 +111,21 @@ p, ul { margin: 0; }
    Home
 ------------------------------------------------------------------- */
 .home { background: #fff; }
+.home .cover { object-position: 50% 0; }
 
 .bust {
   position: absolute;
-  left: calc(643 * var(--u));
-  top: calc(168 * var(--u));
+  left: calc(var(--ox) + 643 * var(--u));
+  top: calc(var(--oy) + 168 * var(--u));
   width: calc(668 * var(--u));
   height: calc(864 * var(--u));
   pointer-events: none;
-}
-.bust__base,
-.bust__snakes { position: absolute; inset: 0; }
-.bust img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-/* Snakes: after 2s (script.js adds .snakes-on) the hair area is swapped for a copy run
-   through the #snakes displacement filter (index.html). The face ellipse and everything
-   below the jaw stay on the still base, so only the snakes/hair wriggle. */
-.bust__snakes { display: none; }
-.snakes-on .bust__snakes {
-  display: block;
-  filter: url(#snakes);
-  -webkit-mask-image:
-    radial-gradient(ellipse 24.7% 23.1% at 49.4% 44%, transparent 78%, #000 100%),
-    linear-gradient(#000 50%, transparent 60%);
-  mask-image:
-    radial-gradient(ellipse 24.7% 23.1% at 49.4% 44%, transparent 78%, #000 100%),
-    linear-gradient(#000 50%, transparent 60%);
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
-}
-/* the still base stays fully opaque wherever the moving copy is not, so the bust never
-   turns see-through (the moving copy simply lies on top in the blend zone) */
-.snakes-on .bust__base {
-  -webkit-mask-image:
-    radial-gradient(ellipse 24.7% 23.1% at 49.4% 44%, #000 100%, transparent 116%),
-    linear-gradient(transparent 40%, #000 50%);
-  mask-image:
-    radial-gradient(ellipse 24.7% 23.1% at 49.4% 44%, #000 100%, transparent 116%),
-    linear-gradient(transparent 40%, #000 50%);
 }
 
 .logo {
   position: absolute;
   left: calc(50% - 6.5 * var(--u));
-  top: calc(61 * var(--u));
+  top: calc(var(--oy) + 61 * var(--u));
   width: calc(133 * var(--u));
   height: calc(125 * var(--u));
   transform: translateX(-50%);
@@ -149,20 +146,20 @@ p, ul { margin: 0; }
   white-space: nowrap;
 }
 .hello__hello {
-  left: calc(96 * var(--u));
-  top: calc(461 * var(--u));
+  left: calc(var(--ox) + 96 * var(--u));
+  top: calc(var(--oy) + 461 * var(--u));
   font-family: var(--font-script);
   font-size: calc(200 * var(--u));
 }
 .hello__intro {
-  left: calc(96 * var(--u));
-  top: calc(652 * var(--u));
+  left: calc(var(--ox) + 96 * var(--u));
+  top: calc(var(--oy) + 652 * var(--u));
   font-family: var(--font-serif);
   font-size: calc(83 * var(--u));
 }
 .hello__name {
-  left: calc(86 * var(--u));
-  top: calc(647 * var(--u));
+  left: calc(var(--ox) + 86 * var(--u));
+  top: calc(var(--oy) + 647 * var(--u));
   font-family: var(--font-display);
   font-size: calc(294.447 * var(--u));
 }
@@ -185,7 +182,7 @@ p, ul { margin: 0; }
 
 .timeline__years {
   position: absolute;
-  top: 0;
+  top: var(--oy);
   left: 0;
   width: 100%;
   height: calc(250 * var(--u));
@@ -200,7 +197,7 @@ p, ul { margin: 0; }
 
 .timeline__place {
   position: absolute;
-  top: calc(250 * var(--u));
+  top: calc(var(--oy) + 250 * var(--u));
   width: calc(365 * var(--u));
   height: calc(116 * var(--u));
   font-size: calc(77 * var(--u));
@@ -213,23 +210,23 @@ p, ul { margin: 0; }
 .timeline__rule {
   position: absolute;
   left: 0;
-  top: calc(384 * var(--u));
+  top: calc(var(--oy) + 384 * var(--u));
   width: 100%;
   height: calc(8 * var(--u));
 }
 
 .timeline__list {
   position: absolute;
-  left: calc(1112 * var(--u));
-  top: calc(439 * var(--u));
+  left: calc(var(--ox) + 1112 * var(--u));
+  top: calc(var(--oy) + 439 * var(--u));
   width: calc(746 * var(--u));
   padding: 0;
   list-style: disc;
   color: var(--navy);
-  font-size: calc(50 * var(--u));
+  font-size: calc(var(--list-size, 50) * var(--u));
   line-height: normal;
 }
-.timeline__list li { margin-inline-start: calc(75 * var(--u)); }
+.timeline__list li { margin-inline-start: calc(var(--list-indent, 75) * var(--u)); }
 
 /* ------------------------------------------------------------------
    Collages
@@ -261,19 +258,45 @@ img.piece, .piece > img { object-fit: cover; }
   opacity: 1;
   transform: none;
   transition: opacity 0.45s ease, transform 0.75s cubic-bezier(.34, 1.56, .64, 1);
-  transition-delay: calc(var(--i, 0) * 110ms);
+  transition-delay: var(--d, calc(var(--i, 0) * 110ms));
 }
 
 /* pieces with their own entrance: skip the default pop-in; when un-built they fade out */
 .js .collage .fx-runway,
-.js .collage .fx-fly,
-.js .collage .fx-slap { transform: none; transition: opacity 0.25s ease; }
+.js .collage .fx-cross,
+.js .collage .fx-slap,
+.js .collage .fx-sticker,
+.js .collage .fx-rise,
+.js .collage .fx-drop,
+.js .collage .fx-stamp,
+.js .collage .fx-slide,
+.js .collage .fx-road,
+.js .collage .fx-drive { transform: none; transition: opacity 0.25s ease; }
+
+/* --- Petah Tikva: 90s stickers (white border + shadow are baked into the images). Each one is
+   slapped on: it drops in big, presses flat with a little squash and wobble, and stays a bit
+   crooked (its tilt is the inline `rotate`). Only transform/opacity animate, so it runs on the GPU. */
+.js .collage .fx-sticker { scale: 1.45; will-change: transform, opacity; }
+.js .collage.is-built .fx-sticker {
+  opacity: 1;
+  scale: 1;
+  transition: none;
+  animation: sticker-on 0.6s var(--d, 0s) both;
+}
+@keyframes sticker-on {
+  0%   { opacity: 0; scale: 1.45; translate: calc(-20 * var(--u)) calc(-50 * var(--u)); transform: rotate(10deg);
+         animation-timing-function: cubic-bezier(.55, 0, .85, .45); }
+  50%  { opacity: 1; scale: 0.95 0.97; translate: 0 0; transform: rotate(-2deg);
+         animation-timing-function: ease-out; }
+  72%  { scale: 1.03; transform: rotate(1deg); }
+  100% { opacity: 1; scale: 1; translate: 0 0; transform: none; }
+}
 
 /* --- Milan runway: each model scales out of the runway's vanishing point (transform-origin
    is set per piece in script.js), i.e. walks toward the camera. Size follows a smooth
    ease-out; the step bob runs on `translate` with its own easing and fades out as she
    arrives, so there is no jolt at the end. */
-.js .collage .fx-runway { scale: 0.3; }
+.js .collage .fx-runway { scale: 0.12; }
 .js .collage.is-built .fx-runway {
   opacity: 1;
   scale: 1;
@@ -283,8 +306,8 @@ img.piece, .piece > img { object-fit: cover; }
     runway-bob 2.8s linear var(--d, 0s) both;
 }
 @keyframes runway-in {
-  from { scale: 0.3; opacity: 0; }
-  12%  { opacity: 1; }
+  from { scale: 0.12; opacity: 0; }
+  10%  { opacity: 1; }
   to   { scale: 1; opacity: 1; }
 }
 @keyframes runway-bob {
@@ -297,19 +320,146 @@ img.piece, .piece > img { object-fit: cover; }
   88% { translate: 0 calc(-3 * var(--u)); animation-timing-function: ease-in; }
 }
 
-/* --- Milan plane: flies in from beyond the right edge, growing as it approaches */
-.js .collage .fx-fly { translate: calc(1440 * var(--u)) calc(-270 * var(--u)); scale: 0.55; }
-.js .collage.is-built .fx-fly {
+/* --- Milan plane: crosses the whole sky from beyond the right edge to beyond the left one,
+   descending a little, then comes round again (one pass every 12s) */
+.js .collage .fx-cross { translate: calc(1000 * var(--u)) 0; }
+.js .collage.is-built .fx-cross {
   opacity: 1;
-  translate: 0 0;
-  scale: 1;
-  transition: opacity 0.4s ease var(--d, 0s),
-              translate 2s cubic-bezier(.2, .75, .3, 1) var(--d, 0s),
-              scale 2s cubic-bezier(.2, .75, .3, 1) var(--d, 0s);
+  transition: none;
+  animation: plane-cross 12s linear var(--d, 0s) infinite both;
+}
+@keyframes plane-cross {
+  0%        { translate: calc(1000 * var(--u)) calc(-40 * var(--u)); }
+  55%, 100% { translate: calc(-2050 * var(--u)) calc(70 * var(--u)); }
 }
 
-/* --- New York: the pixel collage is drawn on a canvas by script.js, following the scroll */
-.pixel-collage { image-rendering: auto; }
+/* --- Milan runway: the stripe glitches into the runway floor (Figma "Rectangle 2"). The shape is
+   a clip-path that snaps between the stripe, broken in-between shapes and the runway, while a
+   cyan and a magenta copy jitter beside it for an RGB split. It ends as the runway alone. */
+.glitch-runway {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* the stripe as it is in every frame */
+  --s1: calc(50% - 112 * var(--fit));
+  --s2: calc(50% + 112 * var(--fit));
+  --stripe: polygon(var(--s1) 0, var(--s2) 0, var(--s2) 100%, var(--s1) 100%);
+  /* Rectangle 2, Figma px: (292,888) (428,888) (1606,1080) (848,1080) */
+  --ax: calc(var(--ox) + 292 * var(--u)); --bx: calc(var(--ox) + 428 * var(--u));
+  --cx: calc(var(--ox) + 1606 * var(--u)); --dx: calc(var(--ox) + 848 * var(--u));
+  --top: calc(var(--oy) + 888 * var(--u)); --bot: calc(var(--oy) + 1080 * var(--u));
+  --runway: polygon(var(--ax) var(--top), var(--bx) var(--top), var(--cx) var(--bot), var(--dx) var(--bot));
+}
+.glitch-runway > div {
+  position: absolute;
+  inset: 0;
+  background: var(--lime);
+  clip-path: var(--stripe);
+}
+.glitch-runway > div:nth-child(1) { background: #00e5ff; opacity: 0; }
+.glitch-runway > div:nth-child(2) { background: #ff2bd6; opacity: 0; }
+.collage.is-built .glitch-runway > div {
+  animation: glitch-shape 0.95s var(--d, 0s) both;
+}
+.collage.is-built .glitch-runway > div:nth-child(1) {
+  animation: glitch-shape 0.95s var(--d, 0s) both, glitch-ghost-c 0.95s var(--d, 0s) both;
+}
+.collage.is-built .glitch-runway > div:nth-child(2) {
+  animation: glitch-shape 0.95s var(--d, 0s) both, glitch-ghost-m 0.95s var(--d, 0s) both;
+}
+/* steps: every keyframe snaps instead of easing — that is what makes it a glitch */
+@keyframes glitch-shape {
+  0%   { clip-path: var(--stripe); animation-timing-function: steps(1, end); }
+  10%  { clip-path: polygon(calc(var(--s1) + 30 * var(--u)) 0, calc(var(--s2) + 30 * var(--u)) 0,
+                            calc(var(--s2) + 30 * var(--u)) 100%, calc(var(--s1) + 30 * var(--u)) 100%);
+         animation-timing-function: steps(1, end); }
+  18%  { clip-path: var(--runway); animation-timing-function: steps(1, end); }
+  26%  { clip-path: var(--stripe); animation-timing-function: steps(1, end); }
+  38%  { clip-path: polygon(var(--s1) 45%, var(--s2) 45%, var(--cx) var(--bot), var(--dx) var(--bot));
+         animation-timing-function: steps(1, end); }
+  50%  { clip-path: polygon(calc(var(--ax) - 40 * var(--u)) calc(var(--top) - 30 * var(--u)),
+                            calc(var(--bx) - 40 * var(--u)) calc(var(--top) - 30 * var(--u)),
+                            calc(var(--cx) - 40 * var(--u)) var(--bot), calc(var(--dx) - 40 * var(--u)) var(--bot));
+         animation-timing-function: steps(1, end); }
+  58%  { clip-path: polygon(var(--s1) 0, var(--s2) 0, var(--s2) 30%, var(--s1) 30%);
+         animation-timing-function: steps(1, end); }
+  68%  { clip-path: var(--runway); animation-timing-function: steps(1, end); }
+  76%  { clip-path: polygon(var(--s1) 60%, var(--s2) 60%, var(--cx) var(--bot), var(--dx) var(--bot));
+         animation-timing-function: steps(1, end); }
+  86%  { clip-path: polygon(calc(var(--ax) + 18 * var(--u)) var(--top), calc(var(--bx) + 18 * var(--u)) var(--top),
+                            calc(var(--cx) + 18 * var(--u)) var(--bot), calc(var(--dx) + 18 * var(--u)) var(--bot));
+         animation-timing-function: steps(1, end); }
+  100% { clip-path: var(--runway); }
+}
+@keyframes glitch-ghost-c {
+  0%   { opacity: 0.9; translate: calc(-14 * var(--u)) 0; animation-timing-function: steps(1, end); }
+  20%  { translate: calc(10 * var(--u)) calc(-6 * var(--u)); animation-timing-function: steps(1, end); }
+  45%  { translate: calc(-22 * var(--u)) calc(4 * var(--u)); animation-timing-function: steps(1, end); }
+  70%  { translate: calc(8 * var(--u)) 0; animation-timing-function: steps(1, end); }
+  92%  { opacity: 0.9; translate: calc(-6 * var(--u)) 0; animation-timing-function: steps(1, end); }
+  100% { opacity: 0; translate: 0 0; }
+}
+@keyframes glitch-ghost-m {
+  0%   { opacity: 0.9; translate: calc(14 * var(--u)) 0; animation-timing-function: steps(1, end); }
+  20%  { translate: calc(-10 * var(--u)) calc(6 * var(--u)); animation-timing-function: steps(1, end); }
+  45%  { translate: calc(22 * var(--u)) calc(-4 * var(--u)); animation-timing-function: steps(1, end); }
+  70%  { translate: calc(-8 * var(--u)) 0; animation-timing-function: steps(1, end); }
+  92%  { opacity: 0.9; translate: calc(6 * var(--u)) 0; animation-timing-function: steps(1, end); }
+  100% { opacity: 0; translate: 0 0; }
+}
+
+/* --- New York: the skyline assembles over the rainbow GIF */
+.js .collage.is-built :is(.fx-rise, .fx-drop, .fx-stamp, .fx-slide) { opacity: 1; transition: none; }
+/* the river slides up from below the frame */
+.js .collage.is-built .fx-rise { animation: ny-rise 0.9s cubic-bezier(.2, .8, .2, 1) var(--d, 0s) both; }
+@keyframes ny-rise {
+  from { translate: 0 calc(420 * var(--u)); }
+  to   { translate: 0 0; }
+}
+/* sky and buildings fall in from above the frame and land with a small bounce */
+.js .collage.is-built .fx-drop { animation: ny-drop 0.75s var(--d, 0s) both; }
+@keyframes ny-drop {
+  0%   { translate: 0 calc(-1150 * var(--u)); animation-timing-function: cubic-bezier(.5, 0, .9, .5); }
+  70%  { translate: 0 0; animation-timing-function: ease-out; }
+  84%  { translate: 0 calc(-16 * var(--u)); animation-timing-function: ease-in; }
+  100% { translate: 0 0; }
+}
+/* the bridge stamps down over everything */
+.js .collage.is-built .fx-stamp { animation: ny-stamp 0.45s var(--d, 0s) both; }
+@keyframes ny-stamp {
+  0%   { opacity: 0; scale: 1.25; animation-timing-function: cubic-bezier(.55, 0, .9, .4); }
+  60%  { opacity: 1; scale: 0.98; animation-timing-function: ease-out; }
+  100% { opacity: 1; scale: 1; }
+}
+/* the lime deck shoots onto the bridge from the right like a bullet: full speed all the way, dead stop */
+.js .collage.is-built .fx-slide { animation: ny-slide 0.28s linear var(--d, 0s) both; }
+@keyframes ny-slide {
+  from { translate: var(--from-x) var(--from-y); }
+  to   { translate: 0 0; }
+}
+
+/* --- back home: the road slides in from the left; then the scooter drives along it from beyond
+   the left edge, rocking a little on the road, and brakes into place */
+.js .collage.is-built :is(.fx-road, .fx-drive) { opacity: 1; transition: none; }
+.js .collage.is-built .fx-road { animation: home-road 0.6s cubic-bezier(.2, .8, .2, 1) var(--d, 0s) both; }
+@keyframes home-road {
+  from { translate: calc(-1950 * var(--u)) 0; }
+  to   { translate: 0 0; }
+}
+.fx-drive { transform-origin: 40% 100%; }
+.js .collage.is-built .fx-drive {
+  animation:
+    home-drive 1.8s cubic-bezier(.25, .6, .25, 1) var(--d, 0s) both,
+    home-bump 0.3s ease-in-out var(--d, 0s) 6 alternate;
+}
+@keyframes home-drive {
+  from { translate: calc(-1000 * var(--u)) 0; }
+  to   { translate: 0 0; }
+}
+@keyframes home-bump {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-1.2deg) translateY(calc(-4 * var(--u))); }
+}
 
 /* --- back home: Barbie the dog pants (tongue pivots where it leaves the mouth) */
 .fx-pant { transform-origin: 66% 8%; }
@@ -339,10 +489,60 @@ img.piece, .piece > img { object-fit: cover; }
          filter: drop-shadow(0 calc(4 * var(--u)) calc(8 * var(--u)) rgba(14, 28, 108, 0.22)); }
 }
 
+/* --- sparkles: after the build the pointer is a pastry, and moving it drops more pastries */
+.pastry-mode { cursor: url("assets/img/sausage-cursor.png") 32 32, auto; }
+.pastry-drop {
+  position: absolute;
+  translate: -50% -50%;
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 calc(4 * var(--u)) calc(6 * var(--u)) rgba(14, 28, 108, 0.2));
+  animation: pastry-pop 0.35s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+@keyframes pastry-pop {
+  from { scale: 0.2; opacity: 0; }
+  to   { scale: 1; opacity: 1; }
+}
+
+/* --- the end: "let's do it again" — a blue pill centred at the bottom of the last frame that
+   opens (stretches out from the middle) once everything has landed, and takes you back to the top */
+.again {
+  position: absolute;
+  left: 50%;
+  bottom: calc(56 * var(--fit));
+  z-index: 2;
+  translate: -50% 0;
+  padding: calc(6 * var(--fit)) calc(56 * var(--fit)) calc(10 * var(--fit));
+  border-radius: 999px;
+  background: var(--blue);
+  color: var(--lime);
+  font-family: var(--font-display);
+  font-size: calc(58 * var(--fit));
+  line-height: 1.15;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: 0 calc(6 * var(--fit)) calc(18 * var(--fit)) rgba(14, 28, 108, 0.25);
+  visibility: hidden;
+  opacity: 0;
+  scale: 0 1;
+  transition: scale 0.2s ease, opacity 0.2s ease, visibility 0s 0.2s;
+}
+.pastry-mode .again {
+  visibility: visible;
+  opacity: 1;
+  scale: 1;
+  transition: scale 0.6s cubic-bezier(.34, 1.56, .64, 1), opacity 0.2s ease, visibility 0s;
+}
+.pastry-mode .again:hover { scale: 1.05; transition-duration: 0.25s; }
+.again:focus-visible { outline: 4px solid var(--navy); outline-offset: 6px; }
+
 @media (prefers-reduced-motion: reduce) {
+  .pastry-drop { animation: none; }
+  .again, .pastry-mode .again { transition: none; }
   /* doubled classes outrank the .is-built rules above */
   .js .collage.collage .reveal.reveal { opacity: 1; transform: none; translate: none; scale: none; transition: none; animation: none; }
   .collage.collage .fx-pant { animation: none; }
+  .collage.collage.is-built .glitch-runway > div:nth-child(n) { animation: none; clip-path: var(--runway); }
 }
 
 /* ------------------------------------------------------------------
@@ -352,9 +552,8 @@ img.piece, .piece > img { object-fit: cover; }
 #story { position: relative; container-type: inline-size; }
 html.is-stepping { scroll-behavior: auto; scroll-snap-type: none; } /* while script.js drives the scroll */
 .snap { position: absolute; left: 0; width: 1px; height: 1px; pointer-events: none; }
-/* one step = one frame: 16:9 of the width, but never taller than the window,
-   so a pinned frame is always seen whole (keep in sync with .snap in script.js) */
-#story { --step: min(56.25cqw, 100vh); }
+/* one step = one frame = one full window (keep in sync with .snap in script.js) */
+#story { --step: 100svh; }
 .collage-step { height: var(--step); } /* a frame-tall pause in which the collage builds */
 
 @media (min-width: 701px) {
@@ -368,7 +567,6 @@ html.is-stepping { scroll-behavior: auto; scroll-snap-type: none; } /* while scr
   #story > .frame {
     position: sticky;
     top: 0;
-    aspect-ratio: auto;
     height: var(--step);
   }
   /* the frame sliding in casts a soft shadow onto the one it covers */
